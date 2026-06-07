@@ -19,6 +19,7 @@ export default function App() {
   const camIdRef = useRef<string>('');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Subscribe to the live state.
   useEffect(() => {
@@ -45,16 +46,23 @@ export default function App() {
         video: { width: { ideal: 1280 } },
         audio: false,
       });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      // Stash the stream; the <video> element isn't mounted until `joined`
+      // flips true, so attach it in the effect below (not here).
+      streamRef.current = stream;
       conn.reducers.registerCamera({ cameraId: id, name });
       setJoined(true);
     } catch (e) {
       setError((e as Error).message || 'camera access denied');
     }
   };
+
+  // Attach the captured stream once the <video> element has mounted.
+  useEffect(() => {
+    if (joined && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [joined]);
 
   // Capture loop → ingest_frame.
   useEffect(() => {
