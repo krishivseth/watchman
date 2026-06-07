@@ -84,7 +84,20 @@ const answer = table(
   }
 );
 
-const spacetimedb = schema({ camera, live_frame, pending_frame, chunk, query, answer });
+// Matched frames per query — the visual "search results" the connector
+// surfaces so the UI can show which frames an answer is based on.
+const hit = table(
+  { name: 'hit', public: true },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    query_id: t.u64().index('btree'),
+    camera_id: t.string(),
+    thumb_b64: t.string(),
+    score: t.f32(),
+  }
+);
+
+const spacetimedb = schema({ camera, live_frame, pending_frame, chunk, query, answer, hit });
 export default spacetimedb;
 
 // ─── Camera lifecycle ────────────────────────────────────────────────────────
@@ -181,6 +194,14 @@ export const submit_query = spacetimedb.reducer(
       ts: ctx.timestamp,
       answered: false,
     });
+  }
+);
+
+// Called by the connector for each matched frame (visual search results).
+export const store_hit = spacetimedb.reducer(
+  { query_id: t.u64(), camera_id: t.string(), thumb_b64: t.string(), score: t.f32() },
+  (ctx, { query_id, camera_id, thumb_b64, score }) => {
+    ctx.db.hit.insert({ id: 0n, query_id, camera_id, thumb_b64, score });
   }
 );
 

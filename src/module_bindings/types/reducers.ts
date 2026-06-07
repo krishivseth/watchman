@@ -10,11 +10,13 @@ import IngestFrameReducer from "../ingest_frame_reducer";
 import RegisterCameraReducer from "../register_camera_reducer";
 import StoreAnswerReducer from "../store_answer_reducer";
 import StoreChunkReducer from "../store_chunk_reducer";
+import StoreHitReducer from "../store_hit_reducer";
 import SubmitQueryReducer from "../submit_query_reducer";
 
 export type IngestFrameParams = __Infer<typeof IngestFrameReducer>;
 export type RegisterCameraParams = __Infer<typeof RegisterCameraReducer>;
 export type StoreAnswerParams = __Infer<typeof StoreAnswerReducer>;
 export type StoreChunkParams = __Infer<typeof StoreChunkReducer>;
+export type StoreHitParams = __Infer<typeof StoreHitReducer>;
 export type SubmitQueryParams = __Infer<typeof SubmitQueryReducer>;
 

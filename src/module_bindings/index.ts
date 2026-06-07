@@ -38,6 +38,7 @@ import IngestFrameReducer from "./ingest_frame_reducer";
 import RegisterCameraReducer from "./register_camera_reducer";
 import StoreAnswerReducer from "./store_answer_reducer";
 import StoreChunkReducer from "./store_chunk_reducer";
+import StoreHitReducer from "./store_hit_reducer";
 import SubmitQueryReducer from "./submit_query_reducer";
 
 // Import all procedure arg schemas
@@ -46,6 +47,7 @@ import SubmitQueryReducer from "./submit_query_reducer";
 import AnswerRow from "./answer_table";
 import CameraRow from "./camera_table";
 import ChunkRow from "./chunk_table";
+import HitRow from "./hit_table";
 import LiveFrameRow from "./live_frame_table";
 import PendingFrameRow from "./pending_frame_table";
 import QueryRow from "./query_table";
@@ -90,6 +92,20 @@ const tablesSchema = __schema({
       { name: 'chunk_chunk_id_key', constraint: 'unique', columns: ['chunkId'] },
     ],
   }, ChunkRow),
+  hit: __table({
+    name: 'hit',
+    indexes: [
+      { accessor: 'id', name: 'hit_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'query_id', name: 'hit_query_id_idx_btree', algorithm: 'btree', columns: [
+        'queryId',
+      ] },
+    ],
+    constraints: [
+      { name: 'hit_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, HitRow),
   live_frame: __table({
     name: 'live_frame',
     indexes: [
@@ -131,6 +147,7 @@ const reducersSchema = __reducers(
   __reducerSchema("register_camera", RegisterCameraReducer),
   __reducerSchema("store_answer", StoreAnswerReducer),
   __reducerSchema("store_chunk", StoreChunkReducer),
+  __reducerSchema("store_hit", StoreHitReducer),
   __reducerSchema("submit_query", SubmitQueryReducer),
 );
 

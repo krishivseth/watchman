@@ -38,6 +38,15 @@ export const Chunk = __t.object("Chunk", {
 });
 export type Chunk = __Infer<typeof Chunk>;
 
+export const Hit = __t.object("Hit", {
+  id: __t.u64(),
+  queryId: __t.u64(),
+  cameraId: __t.string(),
+  thumbB64: __t.string(),
+  score: __t.f32(),
+});
+export type Hit = __Infer<typeof Hit>;
+
 export const LiveFrame = __t.object("LiveFrame", {
   cameraId: __t.string(),
   jpegB64: __t.string(),

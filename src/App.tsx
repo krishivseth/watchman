@@ -27,13 +27,14 @@ export default function App() {
     conn
       .subscriptionBuilder()
       .onApplied(() => setSubscribed(true))
-      .subscribe([tables.camera, tables.live_frame, tables.query, tables.answer]);
+      .subscribe([tables.camera, tables.live_frame, tables.query, tables.answer, tables.hit]);
   }, [conn, isActive]);
 
   const [cameras] = useTable(tables.camera);
   const [liveFrames] = useTable(tables.live_frame);
   const [queries] = useTable(tables.query);
   const [answers] = useTable(tables.answer);
+  const [hits] = useTable(tables.hit);
 
   // Join: request the webcam, register the camera, start the capture loop.
   const join = async () => {
@@ -97,10 +98,21 @@ export default function App() {
   // Pair queries with their answers, newest first.
   const conversation = useMemo(() => {
     const ansById = new Map(answers.map((a) => [a.queryId.toString(), a]));
+    const hitsById = new Map<string, (typeof hits)[number][]>();
+    for (const h of hits) {
+      const k = h.queryId.toString();
+      const arr = hitsById.get(k);
+      if (arr) arr.push(h);
+      else hitsById.set(k, [h]);
+    }
     return [...queries]
       .sort((a, b) => Number(b.queryId - a.queryId))
-      .map((q) => ({ q, a: ansById.get(q.queryId.toString()) ?? null }));
-  }, [queries, answers]);
+      .map((q) => {
+        const key = q.queryId.toString();
+        const frames = (hitsById.get(key) ?? []).slice().sort((a, b) => b.score - a.score);
+        return { q, a: ansById.get(key) ?? null, frames };
+      });
+  }, [queries, answers, hits]);
 
   const onlineCount = cameras.filter((c) => c.online).length;
   const totalChunks = cameras.reduce((s, c) => s + (c.chunkCount ?? 0), 0);
@@ -187,9 +199,22 @@ export default function App() {
             <button className="btn" onClick={ask}>Ask</button>
           </div>
           <div className="convo">
-            {conversation.map(({ q, a }) => (
+            {conversation.map(({ q, a, frames }) => (
               <div className="qa" key={q.queryId.toString()}>
                 <div className="q">{q.text}</div>
+                {frames.length > 0 && (
+                  <div className="hits">
+                    {frames.map((h, i) => (
+                      <div className="hit" key={h.id.toString()}>
+                        <img src={`data:image/jpeg;base64,${h.thumbB64}`} alt={h.cameraId} />
+                        <span className="hitmeta">
+                          {h.cameraId} · {Math.round(h.score * 100)}%
+                        </span>
+                        <span className="hitrank">{i + 1}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {a ? (
                   <div className="a">
                     {a.text}

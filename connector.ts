@@ -130,6 +130,10 @@ conn.db.query.onInsert(async (_ctx, q: any) => {
       .map((c) => ({ c, s: cosine(qvec, c.embedding) }))
       .sort((a, b) => b.s - a.s)
       .slice(0, MAX_FRAMES);
+    // Write the matched frames as visual search results.
+    for (const x of top) {
+      conn.reducers.storeHit({ queryId: q.queryId, cameraId: x.c.cameraId, thumbB64: x.c.thumb, score: x.s });
+    }
     const text = top.length
       ? await answerOverFrames(q.text, top.map((x) => x.c))
       : 'No camera footage indexed yet.';
