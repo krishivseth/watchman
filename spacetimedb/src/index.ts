@@ -97,7 +97,32 @@ const hit = table(
   }
 );
 
-const spacetimedb = schema({ camera, live_frame, pending_frame, chunk, query, answer, hit });
+// Retrieval-only search (the explicit RAG step, no LLM answer).
+const search = table(
+  { name: 'search', public: true },
+  {
+    search_id: t.u64().primaryKey().autoInc(),
+    asker: t.identity(),
+    text: t.string(),
+    ts: t.timestamp(),
+  }
+);
+
+// Ranked matched frames for a search.
+const search_hit = table(
+  { name: 'search_hit', public: true },
+  {
+    id: t.u64().primaryKey().autoInc(),
+    search_id: t.u64().index('btree'),
+    camera_id: t.string(),
+    thumb_b64: t.string(),
+    score: t.f32(),
+  }
+);
+
+const spacetimedb = schema({
+  camera, live_frame, pending_frame, chunk, query, answer, hit, search, search_hit,
+});
 export default spacetimedb;
 
 // ─── Camera lifecycle ────────────────────────────────────────────────────────
@@ -238,6 +263,23 @@ export const submit_query = spacetimedb.reducer(
       ts: ctx.timestamp,
       answered: false,
     });
+  }
+);
+
+// Retrieval-only search: the connector embeds + cosine-searches and writes
+// search_hit rows. No LLM answer — this is the explicit RAG retrieval.
+export const submit_search = spacetimedb.reducer(
+  { text: t.string() },
+  (ctx, { text }) => {
+    if (!text) throw new SenderError('empty search');
+    ctx.db.search.insert({ search_id: 0n, asker: ctx.sender, text, ts: ctx.timestamp });
+  }
+);
+
+export const store_search_hit = spacetimedb.reducer(
+  { search_id: t.u64(), camera_id: t.string(), thumb_b64: t.string(), score: t.f32() },
+  (ctx, { search_id, camera_id, thumb_b64, score }) => {
+    ctx.db.search_hit.insert({ id: 0n, search_id, camera_id, thumb_b64, score });
   }
 );
 

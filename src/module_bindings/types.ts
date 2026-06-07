@@ -71,3 +71,20 @@ export const Query = __t.object("Query", {
 });
 export type Query = __Infer<typeof Query>;
 
+export const Search = __t.object("Search", {
+  searchId: __t.u64(),
+  asker: __t.identity(),
+  text: __t.string(),
+  ts: __t.timestamp(),
+});
+export type Search = __Infer<typeof Search>;
+
+export const SearchHit = __t.object("SearchHit", {
+  id: __t.u64(),
+  searchId: __t.u64(),
+  cameraId: __t.string(),
+  thumbB64: __t.string(),
+  score: __t.f32(),
+});
+export type SearchHit = __Infer<typeof SearchHit>;
+

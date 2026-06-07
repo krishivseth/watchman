@@ -14,6 +14,8 @@ export default function App() {
   const [joined, setJoined] = useState(false);
   const [camName, setCamName] = useState('');
   const [question, setQuestion] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [tab, setTab] = useState<'qa' | 'search'>('qa');
   const [error, setError] = useState<string | null>(null);
 
   const camIdRef = useRef<string>('');
@@ -27,7 +29,10 @@ export default function App() {
     conn
       .subscriptionBuilder()
       .onApplied(() => setSubscribed(true))
-      .subscribe([tables.camera, tables.live_frame, tables.query, tables.answer, tables.hit]);
+      .subscribe([
+        tables.camera, tables.live_frame, tables.query, tables.answer, tables.hit,
+        tables.search, tables.search_hit,
+      ]);
   }, [conn, isActive]);
 
   const [cameras] = useTable(tables.camera);
@@ -35,6 +40,8 @@ export default function App() {
   const [queries] = useTable(tables.query);
   const [answers] = useTable(tables.answer);
   const [hits] = useTable(tables.hit);
+  const [searches] = useTable(tables.search);
+  const [searchHits] = useTable(tables.search_hit);
 
   // Join: request the webcam, register the camera, start the capture loop.
   const join = async () => {
@@ -94,6 +101,22 @@ export default function App() {
       setQuestion('');
     }
   };
+
+  const runSearch = () => {
+    const t = searchText.trim();
+    if (t && conn) conn.reducers.submitSearch({ text: t });
+  };
+
+  // Latest search + its ranked frames.
+  const latestSearch = useMemo(() => {
+    if (searches.length === 0) return null;
+    const s = [...searches].sort((a, b) => Number(b.searchId - a.searchId))[0];
+    const frames = searchHits
+      .filter((h) => h.searchId === s.searchId)
+      .slice()
+      .sort((a, b) => b.score - a.score);
+    return { s, frames };
+  }, [searches, searchHits]);
 
   // Pair queries with their answers, newest first.
   const conversation = useMemo(() => {
@@ -185,7 +208,18 @@ export default function App() {
           )}
         </section>
 
-        {/* Ask */}
+        {/* Tabs: Live Q&A vs Search frames */}
+        <nav className="tabs">
+          <button className={`tabbtn ${tab === 'qa' ? 'active' : ''}`} onClick={() => setTab('qa')}>
+            Live Q&amp;A
+          </button>
+          <button className={`tabbtn ${tab === 'search' ? 'active' : ''}`} onClick={() => setTab('search')}>
+            Search frames
+          </button>
+        </nav>
+
+        {/* Live Q&A (conversational RAG: retrieve + LLM answer) */}
+        {tab === 'qa' && (
         <section className="panel">
           <div className="label">Ask the cameras</div>
           <div className="askbar">
@@ -229,6 +263,44 @@ export default function App() {
             ))}
           </div>
         </section>
+        )}
+
+        {/* Search frames (retrieval-only RAG: ranked matching frames, no LLM) */}
+        {tab === 'search' && (
+        <section className="panel">
+          <div className="label">Search across frames — vector retrieval</div>
+          <div className="askbar">
+            <input
+              className="in"
+              placeholder="e.g. a person wearing red"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && runSearch()}
+            />
+            <button className="btn" onClick={runSearch}>Search</button>
+          </div>
+          {latestSearch && (
+            <div className="convo">
+              <div className="qa">
+                <div className="q">"{latestSearch.s.text}"</div>
+                {latestSearch.frames.length > 0 ? (
+                  <div className="hits">
+                    {latestSearch.frames.map((h, i) => (
+                      <div className="hit" key={h.id.toString()}>
+                        <img src={`data:image/jpeg;base64,${h.thumbB64}`} alt={h.cameraId} />
+                        <span className="hitmeta">{h.cameraId} · {Math.round(h.score * 100)}%</span>
+                        <span className="hitrank">{i + 1}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="a pending"><span className="bdot" /> searching…</div>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+        )}
       </main>
     </div>
   );

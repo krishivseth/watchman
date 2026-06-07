@@ -12,7 +12,9 @@ import ResetAgentReducer from "../reset_agent_reducer";
 import StoreAnswerReducer from "../store_answer_reducer";
 import StoreChunkReducer from "../store_chunk_reducer";
 import StoreHitReducer from "../store_hit_reducer";
+import StoreSearchHitReducer from "../store_search_hit_reducer";
 import SubmitQueryReducer from "../submit_query_reducer";
+import SubmitSearchReducer from "../submit_search_reducer";
 
 export type IngestFrameParams = __Infer<typeof IngestFrameReducer>;
 export type RegisterCameraParams = __Infer<typeof RegisterCameraReducer>;
@@ -20,5 +22,7 @@ export type ResetAgentParams = __Infer<typeof ResetAgentReducer>;
 export type StoreAnswerParams = __Infer<typeof StoreAnswerReducer>;
 export type StoreChunkParams = __Infer<typeof StoreChunkReducer>;
 export type StoreHitParams = __Infer<typeof StoreHitReducer>;
+export type StoreSearchHitParams = __Infer<typeof StoreSearchHitReducer>;
 export type SubmitQueryParams = __Infer<typeof SubmitQueryReducer>;
+export type SubmitSearchParams = __Infer<typeof SubmitSearchReducer>;
 

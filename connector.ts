@@ -84,7 +84,7 @@ const conn = DbConnection.builder()
     console.log('connector online as', identity.toHexString().slice(0, 12));
     c.subscriptionBuilder()
       .onApplied(() => console.log('subscribed'))
-      .subscribe([tables.pending_frame, tables.chunk, tables.query, tables.answer]);
+      .subscribe([tables.pending_frame, tables.chunk, tables.query, tables.answer, tables.search, tables.search_hit]);
   })
   .onConnectError((_c, e) => console.error('connect error', e))
   .build();
@@ -145,6 +145,30 @@ conn.db.query.onInsert(async (_ctx, q: any) => {
     conn.reducers.storeAnswer({ queryId: q.queryId, text: `Error: ${(e as Error).message}`, citations: '' });
   } finally {
     answering.delete(key);
+  }
+});
+
+// Retrieval-only search (the explicit RAG step — no LLM answer, just ranked frames).
+const SEARCH_K = 12;
+const searching = new Set<string>();
+conn.db.search.onInsert(async (_ctx, s: any) => {
+  const key = s.searchId.toString();
+  if (searching.has(key)) return;
+  searching.add(key);
+  try {
+    const qvec = await embedText(s.text);
+    const top = [...chunks.values()]
+      .map((c) => ({ c, score: cosine(qvec, c.embedding) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, SEARCH_K);
+    for (const x of top) {
+      conn.reducers.storeSearchHit({ searchId: s.searchId, cameraId: x.c.cameraId, thumbB64: x.c.thumb, score: x.score });
+    }
+    console.log('searched', key, '→', top.length, 'hits');
+  } catch (e) {
+    console.error('search failed', (e as Error).message);
+  } finally {
+    searching.delete(key);
   }
 });
 

@@ -40,7 +40,9 @@ import ResetAgentReducer from "./reset_agent_reducer";
 import StoreAnswerReducer from "./store_answer_reducer";
 import StoreChunkReducer from "./store_chunk_reducer";
 import StoreHitReducer from "./store_hit_reducer";
+import StoreSearchHitReducer from "./store_search_hit_reducer";
 import SubmitQueryReducer from "./submit_query_reducer";
+import SubmitSearchReducer from "./submit_search_reducer";
 
 // Import all procedure arg schemas
 
@@ -52,6 +54,8 @@ import HitRow from "./hit_table";
 import LiveFrameRow from "./live_frame_table";
 import PendingFrameRow from "./pending_frame_table";
 import QueryRow from "./query_table";
+import SearchRow from "./search_table";
+import SearchHitRow from "./search_hit_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -140,6 +144,31 @@ const tablesSchema = __schema({
       { name: 'query_query_id_key', constraint: 'unique', columns: ['queryId'] },
     ],
   }, QueryRow),
+  search: __table({
+    name: 'search',
+    indexes: [
+      { accessor: 'search_id', name: 'search_search_id_idx_btree', algorithm: 'btree', columns: [
+        'searchId',
+      ] },
+    ],
+    constraints: [
+      { name: 'search_search_id_key', constraint: 'unique', columns: ['searchId'] },
+    ],
+  }, SearchRow),
+  search_hit: __table({
+    name: 'search_hit',
+    indexes: [
+      { accessor: 'id', name: 'search_hit_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'search_id', name: 'search_hit_search_id_idx_btree', algorithm: 'btree', columns: [
+        'searchId',
+      ] },
+    ],
+    constraints: [
+      { name: 'search_hit_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SearchHitRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -150,7 +179,9 @@ const reducersSchema = __reducers(
   __reducerSchema("store_answer", StoreAnswerReducer),
   __reducerSchema("store_chunk", StoreChunkReducer),
   __reducerSchema("store_hit", StoreHitReducer),
+  __reducerSchema("store_search_hit", StoreSearchHitReducer),
   __reducerSchema("submit_query", SubmitQueryReducer),
+  __reducerSchema("submit_search", SubmitSearchReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

@@ -68,6 +68,11 @@ body {
 
 .empty { padding: 40px; text-align: center; color: var(--mute); font-family: ui-monospace, monospace; font-size: 13px; }
 
+.tabs { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--edge); border-radius: 10px; background: var(--panel2); align-self: flex-start; }
+.tabbtn { background: transparent; border: none; color: var(--mute); font-family: ui-monospace, monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; padding: 7px 14px; border-radius: 7px; cursor: pointer; transition: all 0.15s; }
+.tabbtn:hover { color: var(--ink); }
+.tabbtn.active { background: var(--accent); color: var(--base); font-weight: 700; }
+
 .convo { margin-top: 14px; display: flex; flex-direction: column; gap: 14px; }
 .qa { border-left: 2px solid var(--edge); padding-left: 12px; }
 .q { font-family: ui-monospace, monospace; font-size: 13px; color: var(--accent); margin-bottom: 6px; }
