@@ -102,45 +102,40 @@ export default spacetimedb;
 
 // ─── Camera lifecycle ────────────────────────────────────────────────────────
 
-// Wipe the AI's working set (indexed chunks, pending frames, Q&A) so each new
-// joiner starts the agent from a clean slate. Live feeds (camera/live_frame)
-// are left intact.
-// A camera that hasn't pushed a frame in this long is considered gone.
+// A camera that hasn't pushed a frame in this long is considered departed.
 const STALE_MICROS = 20_000_000n; // 20s
 
-// Clear the AI working set + conversation (chunks, queue, queries, answers, hits).
-function clearWorkingSet(ctx: any) {
+// Drop a departed camera and EVERYTHING tied to it — its live feed, queued
+// frames, and indexed chunks — so RAG no longer uses its footage. A live
+// camera keeps all of its stored frames (they stay searchable).
+function dropCamera(ctx: any, cameraId: string) {
+  if (ctx.db.live_frame.camera_id.find(cameraId)) ctx.db.live_frame.camera_id.delete(cameraId);
+  for (const c of [...ctx.db.chunk.camera_id.filter(cameraId)]) ctx.db.chunk.chunk_id.delete(c.chunk_id);
+  for (const p of [...ctx.db.pending_frame.iter()]) {
+    if (p.camera_id === cameraId) ctx.db.pending_frame.id.delete(p.id);
+  }
+  ctx.db.camera.camera_id.delete(cameraId);
+}
+
+// Remove only DEPARTED cameras (stale last_seen) + their orphaned data.
+// Live cameras and the whole conversation (queries/answers/hits) are kept.
+function pruneStaleCameras(ctx: any, keepId: string) {
+  const cutoff = ctx.timestamp.microsSinceUnixEpoch - STALE_MICROS;
+  for (const cam of [...ctx.db.camera.iter()]) {
+    if (cam.camera_id === keepId) continue;
+    if (cam.last_seen.microsSinceUnixEpoch < cutoff) dropCamera(ctx, cam.camera_id);
+  }
+}
+
+// Full nuke: everything (manual reset only).
+function clearAll(ctx: any) {
   for (const c of [...ctx.db.chunk.iter()]) ctx.db.chunk.chunk_id.delete(c.chunk_id);
   for (const p of [...ctx.db.pending_frame.iter()]) ctx.db.pending_frame.id.delete(p.id);
   for (const q of [...ctx.db.query.iter()]) ctx.db.query.query_id.delete(q.query_id);
   for (const a of [...ctx.db.answer.iter()]) ctx.db.answer.query_id.delete(a.query_id);
   for (const h of [...ctx.db.hit.iter()]) ctx.db.hit.id.delete(h.id);
-}
-
-function deleteCamera(ctx: any, camera_id: string) {
-  ctx.db.camera.camera_id.delete(camera_id);
-  if (ctx.db.live_frame.camera_id.find(camera_id)) ctx.db.live_frame.camera_id.delete(camera_id);
-}
-
-// On a new join: clear the working set + drop STALE cameras (by last_seen),
-// not by the unreliable `online` flag. Active streamers (recent last_seen)
-// survive.
-function clearOnJoin(ctx: any) {
-  clearWorkingSet(ctx);
-  const cutoff = ctx.timestamp.microsSinceUnixEpoch - STALE_MICROS;
-  for (const cam of [...ctx.db.camera.iter()]) {
-    if (cam.last_seen.microsSinceUnixEpoch < cutoff) {
-      deleteCamera(ctx, cam.camera_id);
-    } else if (cam.chunk_count !== 0) {
-      ctx.db.camera.camera_id.update({ ...cam, chunk_count: 0 });
-    }
-  }
-}
-
-// Full nuke: everything, including all cameras + feeds.
-function clearAll(ctx: any) {
-  clearWorkingSet(ctx);
-  for (const cam of [...ctx.db.camera.iter()]) deleteCamera(ctx, cam.camera_id);
+  for (const lf of [...ctx.db.live_frame.iter()]) ctx.db.live_frame.camera_id.delete(lf.camera_id);
+  for (const cam of [...ctx.db.camera.iter()]) ctx.db.camera.camera_id.delete(cam.camera_id);
 }
 
 export const register_camera = spacetimedb.reducer(
@@ -148,10 +143,11 @@ export const register_camera = spacetimedb.reducer(
   (ctx, { camera_id, name }) => {
     if (!camera_id) throw new SenderError('camera_id required');
 
-    // Reset the AI agent's inputs whenever a NEW person joins.
-    const existing = ctx.db.camera.camera_id.find(camera_id);
-    if (!existing) clearOnJoin(ctx);
+    // On any join, clean up departed cameras (and their frames) — but keep
+    // every live camera's footage and the conversation.
+    pruneStaleCameras(ctx, camera_id);
 
+    const existing = ctx.db.camera.camera_id.find(camera_id);
     if (existing) {
       ctx.db.camera.camera_id.update({
         ...existing,
