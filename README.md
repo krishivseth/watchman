@@ -1,8 +1,13 @@
-# Watchman — live multicam Video RAG (SpacetimeDB)
+# Watchman — AI security-camera monitoring (SpacetimeDB)
 
-**Anyone, any laptop, no install — open a URL, grant your camera, and you're a live camera in a shared, searchable multi-camera feed.** Ask questions in plain English and get answers grounded in what the cameras actually see.
+**Turn a fleet of security cameras into a live, searchable feed you can question in plain English.** Watchman continuously indexes what every camera sees and answers questions like *"was anyone at the door in the last few minutes?"* or *"did someone in a red shirt walk by?"* — grounded in the actual footage, with the matching frames shown.
 
-Built on **SpacetimeDB** (realtime store + sync) with **Google Gemini** for embeddings and answers.
+- **Live Q&A** — ask a question, get an answer across all cameras (retrieval + Gemini).
+- **Search frames** — semantic search over the footage, returning the ranked matching frames.
+
+Built on **SpacetimeDB** (realtime store + sync) and **Google Gemini** (embeddings + answers).
+
+> **Demo note:** so anyone can try it instantly, a camera can be spun up straight from the **browser** — open the URL, grant webcam access, no install. That webcam path is purely for the demo. In a real deployment the cameras are **fixed security cameras, phones, or edge devices** running the same capture loop and feeding the same pipeline.
 
 ## Architecture
 
