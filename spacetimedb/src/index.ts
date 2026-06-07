@@ -102,11 +102,29 @@ export default spacetimedb;
 
 // ─── Camera lifecycle ────────────────────────────────────────────────────────
 
+// Wipe the AI's working set (indexed chunks, pending frames, Q&A) so each new
+// joiner starts the agent from a clean slate. Live feeds (camera/live_frame)
+// are left intact.
+function clearAiInputs(ctx: any) {
+  for (const c of [...ctx.db.chunk.iter()]) ctx.db.chunk.chunk_id.delete(c.chunk_id);
+  for (const p of [...ctx.db.pending_frame.iter()]) ctx.db.pending_frame.id.delete(p.id);
+  for (const q of [...ctx.db.query.iter()]) ctx.db.query.query_id.delete(q.query_id);
+  for (const a of [...ctx.db.answer.iter()]) ctx.db.answer.query_id.delete(a.query_id);
+  for (const h of [...ctx.db.hit.iter()]) ctx.db.hit.id.delete(h.id);
+  for (const cam of [...ctx.db.camera.iter()]) {
+    if (cam.chunk_count !== 0) ctx.db.camera.camera_id.update({ ...cam, chunk_count: 0 });
+  }
+}
+
 export const register_camera = spacetimedb.reducer(
   { camera_id: t.string(), name: t.string() },
   (ctx, { camera_id, name }) => {
     if (!camera_id) throw new SenderError('camera_id required');
+
+    // Reset the AI agent's inputs whenever a NEW person joins.
     const existing = ctx.db.camera.camera_id.find(camera_id);
+    if (!existing) clearAiInputs(ctx);
+
     if (existing) {
       ctx.db.camera.camera_id.update({
         ...existing,
@@ -126,6 +144,9 @@ export const register_camera = spacetimedb.reducer(
     }
   }
 );
+
+// Manual reset (clears all AI inputs without needing a new camera).
+export const reset_agent = spacetimedb.reducer((ctx) => clearAiInputs(ctx));
 
 // Browser pushes a captured frame (~ every 5s). Updates the live tile and
 // enqueues the frame for embedding by the connector.

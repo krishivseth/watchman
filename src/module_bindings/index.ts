@@ -36,6 +36,7 @@ import {
 // Import all reducer arg schemas
 import IngestFrameReducer from "./ingest_frame_reducer";
 import RegisterCameraReducer from "./register_camera_reducer";
+import ResetAgentReducer from "./reset_agent_reducer";
 import StoreAnswerReducer from "./store_answer_reducer";
 import StoreChunkReducer from "./store_chunk_reducer";
 import StoreHitReducer from "./store_hit_reducer";
@@ -145,6 +146,7 @@ const tablesSchema = __schema({
 const reducersSchema = __reducers(
   __reducerSchema("ingest_frame", IngestFrameReducer),
   __reducerSchema("register_camera", RegisterCameraReducer),
+  __reducerSchema("reset_agent", ResetAgentReducer),
   __reducerSchema("store_answer", StoreAnswerReducer),
   __reducerSchema("store_chunk", StoreChunkReducer),
   __reducerSchema("store_hit", StoreHitReducer),
