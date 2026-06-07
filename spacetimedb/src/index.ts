@@ -106,13 +106,18 @@ export default spacetimedb;
 // joiner starts the agent from a clean slate. Live feeds (camera/live_frame)
 // are left intact.
 function clearAiInputs(ctx: any) {
+  // AI working set + conversation.
   for (const c of [...ctx.db.chunk.iter()]) ctx.db.chunk.chunk_id.delete(c.chunk_id);
   for (const p of [...ctx.db.pending_frame.iter()]) ctx.db.pending_frame.id.delete(p.id);
   for (const q of [...ctx.db.query.iter()]) ctx.db.query.query_id.delete(q.query_id);
   for (const a of [...ctx.db.answer.iter()]) ctx.db.answer.query_id.delete(a.query_id);
   for (const h of [...ctx.db.hit.iter()]) ctx.db.hit.id.delete(h.id);
+  // Stale feeds: drop all live frames (online cameras repopulate within ~5s)
+  // and remove cameras that have gone offline (departed participants).
+  for (const lf of [...ctx.db.live_frame.iter()]) ctx.db.live_frame.camera_id.delete(lf.camera_id);
   for (const cam of [...ctx.db.camera.iter()]) {
-    if (cam.chunk_count !== 0) ctx.db.camera.camera_id.update({ ...cam, chunk_count: 0 });
+    if (!cam.online) ctx.db.camera.camera_id.delete(cam.camera_id);
+    else if (cam.chunk_count !== 0) ctx.db.camera.camera_id.update({ ...cam, chunk_count: 0 });
   }
 }
 

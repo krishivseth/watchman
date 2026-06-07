@@ -49,11 +49,22 @@ npm run dev                          # open the printed URL → "Join with my ca
 
 `GEMINI_MODEL` defaults to `gemini-3.5-flash`. Embeddings use `gemini-embedding-2-preview`.
 
-## Make it public ("anyone can join")
+## Deploy on Railway (two services, one repo)
 
-- Build the client (`npm run build`) and host `dist/` anywhere static (Vercel/Netlify/Railway). It points at the maincloud module via `.env.local`.
-- Run the **connector** on a server (Railway/VM) with `GEMINI_API_KEY` set — it must stay running for frames to be embedded and questions answered.
-- Share the URL. Each visitor who grants camera access becomes a live camera; everyone sees every feed and can query across all of them.
+The module is already on maincloud. You deploy **two** Railway services from this repo:
+
+**1. Client (static web)** — uses `./Dockerfile` (the default; `railway.toml` points at it).
+- New Railway service → deploy from this repo. It builds the Vite app and serves it on `$PORT`.
+- The maincloud host/DB are baked in from `.env.local` (public config, no secrets).
+
+**2. Connector (the "brain")** — uses `connector.Dockerfile`.
+- New Railway service from the same repo → set **Dockerfile Path** = `connector.Dockerfile`.
+- Set variable **`GEMINI_API_KEY`** (and optionally `GEMINI_MODEL`). No public port needed.
+- It must stay running — it embeds frames and answers questions. **Without it, RAG does nothing** (no embeddings, no answers).
+
+Then share the **client** URL. Each visitor who grants camera access becomes a live camera; everyone sees every feed and can query across all of them.
+
+> ⚠️ RAG only works when the **connector** is up. A static client alone shows live feeds but never indexes or answers.
 
 ## Notes
 

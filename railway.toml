@@ -1,0 +1,10 @@
+# Default service = the static client (uses ./Dockerfile).
+# Deploy the connector as a SECOND Railway service with Dockerfile path
+# connector.Dockerfile and a GEMINI_API_KEY variable (see README).
+[build]
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
