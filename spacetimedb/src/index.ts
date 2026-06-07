@@ -105,20 +105,42 @@ export default spacetimedb;
 // Wipe the AI's working set (indexed chunks, pending frames, Q&A) so each new
 // joiner starts the agent from a clean slate. Live feeds (camera/live_frame)
 // are left intact.
-function clearAiInputs(ctx: any) {
-  // AI working set + conversation.
+// A camera that hasn't pushed a frame in this long is considered gone.
+const STALE_MICROS = 20_000_000n; // 20s
+
+// Clear the AI working set + conversation (chunks, queue, queries, answers, hits).
+function clearWorkingSet(ctx: any) {
   for (const c of [...ctx.db.chunk.iter()]) ctx.db.chunk.chunk_id.delete(c.chunk_id);
   for (const p of [...ctx.db.pending_frame.iter()]) ctx.db.pending_frame.id.delete(p.id);
   for (const q of [...ctx.db.query.iter()]) ctx.db.query.query_id.delete(q.query_id);
   for (const a of [...ctx.db.answer.iter()]) ctx.db.answer.query_id.delete(a.query_id);
   for (const h of [...ctx.db.hit.iter()]) ctx.db.hit.id.delete(h.id);
-  // Stale feeds: drop all live frames (online cameras repopulate within ~5s)
-  // and remove cameras that have gone offline (departed participants).
-  for (const lf of [...ctx.db.live_frame.iter()]) ctx.db.live_frame.camera_id.delete(lf.camera_id);
+}
+
+function deleteCamera(ctx: any, camera_id: string) {
+  ctx.db.camera.camera_id.delete(camera_id);
+  if (ctx.db.live_frame.camera_id.find(camera_id)) ctx.db.live_frame.camera_id.delete(camera_id);
+}
+
+// On a new join: clear the working set + drop STALE cameras (by last_seen),
+// not by the unreliable `online` flag. Active streamers (recent last_seen)
+// survive.
+function clearOnJoin(ctx: any) {
+  clearWorkingSet(ctx);
+  const cutoff = ctx.timestamp.microsSinceUnixEpoch - STALE_MICROS;
   for (const cam of [...ctx.db.camera.iter()]) {
-    if (!cam.online) ctx.db.camera.camera_id.delete(cam.camera_id);
-    else if (cam.chunk_count !== 0) ctx.db.camera.camera_id.update({ ...cam, chunk_count: 0 });
+    if (cam.last_seen.microsSinceUnixEpoch < cutoff) {
+      deleteCamera(ctx, cam.camera_id);
+    } else if (cam.chunk_count !== 0) {
+      ctx.db.camera.camera_id.update({ ...cam, chunk_count: 0 });
+    }
   }
+}
+
+// Full nuke: everything, including all cameras + feeds.
+function clearAll(ctx: any) {
+  clearWorkingSet(ctx);
+  for (const cam of [...ctx.db.camera.iter()]) deleteCamera(ctx, cam.camera_id);
 }
 
 export const register_camera = spacetimedb.reducer(
@@ -128,7 +150,7 @@ export const register_camera = spacetimedb.reducer(
 
     // Reset the AI agent's inputs whenever a NEW person joins.
     const existing = ctx.db.camera.camera_id.find(camera_id);
-    if (!existing) clearAiInputs(ctx);
+    if (!existing) clearOnJoin(ctx);
 
     if (existing) {
       ctx.db.camera.camera_id.update({
@@ -151,7 +173,7 @@ export const register_camera = spacetimedb.reducer(
 );
 
 // Manual reset (clears all AI inputs without needing a new camera).
-export const reset_agent = spacetimedb.reducer((ctx) => clearAiInputs(ctx));
+export const reset_agent = spacetimedb.reducer((ctx) => clearAll(ctx));
 
 // Browser pushes a captured frame (~ every 5s). Updates the live tile and
 // enqueues the frame for embedding by the connector.
